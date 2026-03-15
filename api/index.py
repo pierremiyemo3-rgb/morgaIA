@@ -4,7 +4,6 @@ MorgaIA v2 — Backend Flask
 API Football + Gemini + SQLite + The Odds API
 """
 
-import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
@@ -23,7 +22,10 @@ except ImportError:
     def get_history(n=50): return []
     def get_analysis_by_id(i): return None
     def delete_analysis(i): pass
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -1098,17 +1100,20 @@ Règles :
 
 @app.route("/")
 def index():
-    import os
-    # Chercher index.html dans plusieurs endroits possibles
+    # Sur Vercel, index.html est à la racine /var/task
     for folder in [
-        os.path.dirname(os.path.abspath(__file__)),
         os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."),
         "/var/task",
+        os.path.dirname(os.path.abspath(__file__)),
     ]:
-        path = os.path.join(folder, "index.html")
+        if os.path.exists(os.path.join(folder, "index.html")):
+            return send_from_directory(os.path.abspath(folder), "index.html")
+    # Fallback : lire et retourner directement
+    for path in ["/var/task/index.html", os.path.join(os.path.dirname(__file__), "../index.html")]:
         if os.path.exists(path):
-            return send_from_directory(folder, "index.html")
-    return "index.html not found", 404
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read(), 200, {"Content-Type": "text/html; charset=utf-8"}
+    return "<h1>MorgaIA</h1><p>index.html introuvable</p>", 404
 
 @app.route("/api/status")
 def status():
@@ -1213,7 +1218,7 @@ def set_key():
     if not key.startswith("AIza"):
         return jsonify({"ok": False, "error": "Cle invalide - doit commencer par AIza"})
     genai.configure(api_key=key)
-    gemini_client = genai.GenerativeModel("gemini-2.0-flash")
+    gemini_client = genai.GenerativeModel("gemini-2.0-flash") if genai else None
     print(f"  Cle Gemini enregistree : {key[:16]}...")
     return jsonify({"ok": True})
 
