@@ -4,28 +4,37 @@ MorgaIA v2 — Backend Flask
 API Football + Gemini + SQLite + The Odds API
 """
 
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-import requests
+import os
+import sys
 import json
 import math
 import statistics
-import os
-import sys
-# Support local et Vercel
+
+from flask import Flask, request, jsonify, send_from_directory
+
+try:
+    from flask_cors import CORS
+    HAS_CORS = True
+except ImportError:
+    HAS_CORS = False
+    class CORS:
+        def __init__(self, *a, **k): pass
+
+import requests
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+
 try:
     from database import init_db, save_analysis, get_history, get_analysis_by_id, delete_analysis
 except ImportError:
-    # Fallback inline pour Vercel
     def init_db(): pass
     def save_analysis(*a, **k): pass
     def get_history(n=50): return []
     def get_analysis_by_id(i): return None
     def delete_analysis(i): pass
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
 
 # ─────────────────────────────────────────────
 # CONFIG
