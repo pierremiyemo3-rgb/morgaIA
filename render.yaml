@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: morgaia
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: FOOTBALL_KEY
+        value: 257ad93c80bd84a753ce6d9730bd01db
+      - key: PORT
+        value: 10000
