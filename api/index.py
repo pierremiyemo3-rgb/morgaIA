@@ -20,7 +20,10 @@ except ImportError:
     class CORS:
         def __init__(self, *a, **k): pass
 
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None
 
 try:
     import google.generativeai as genai
@@ -65,7 +68,9 @@ ODDS_SPORT_MAP = {
 }
 
 app           = Flask(__name__)
-CORS(app)
+try:
+    CORS(app)
+except: pass
 gemini_client = None
 
 # ─────────────────────────────────────────────
@@ -2012,8 +2017,7 @@ def history_delete(hid):
 # DEMARRAGE
 # ─────────────────────────────────────────────
 
-# ── VERCEL : init au démarrage ──
-init_db()
+# init_db() appelé à la première requête
 
 # Point d'entrée Vercel (handler)
 # Vercel détecte automatiquement l'objet 'app' Flask
