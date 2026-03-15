@@ -4,40 +4,14 @@ MorgaIA v2 — Backend Flask
 API Football + Gemini + SQLite + The Odds API
 """
 
-import os
-import sys
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+import requests
 import json
 import math
 import statistics
-
-from flask import Flask, request, jsonify, send_from_directory
-
-try:
-    from flask_cors import CORS
-    HAS_CORS = True
-except ImportError:
-    HAS_CORS = False
-    class CORS:
-        def __init__(self, *a, **k): pass
-
-try:
-    import requests
-except ImportError:
-    requests = None
-
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
-
-try:
-    from database import init_db, save_analysis, get_history, get_analysis_by_id, delete_analysis
-except ImportError:
-    def init_db(): pass
-    def save_analysis(*a, **k): pass
-    def get_history(n=50): return []
-    def get_analysis_by_id(i): return None
-    def delete_analysis(i): pass
+from database import init_db, save_analysis, get_history, get_analysis_by_id, delete_analysis
+import google.generativeai as genai
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -68,9 +42,7 @@ ODDS_SPORT_MAP = {
 }
 
 app           = Flask(__name__)
-try:
-    CORS(app)
-except: pass
+CORS(app)
 gemini_client = None
 
 # ─────────────────────────────────────────────
@@ -1114,20 +1086,9 @@ Règles :
 
 @app.route("/")
 def index():
-    # Sur Vercel, index.html est à la racine /var/task
-    for folder in [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."),
-        "/var/task",
-        os.path.dirname(os.path.abspath(__file__)),
-    ]:
-        if os.path.exists(os.path.join(folder, "index.html")):
-            return send_from_directory(os.path.abspath(folder), "index.html")
-    # Fallback : lire et retourner directement
-    for path in ["/var/task/index.html", os.path.join(os.path.dirname(__file__), "../index.html")]:
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read(), 200, {"Content-Type": "text/html; charset=utf-8"}
-    return "<h1>MorgaIA</h1><p>index.html introuvable</p>", 404
+    import os
+    folder = os.path.dirname(os.path.abspath(__file__))
+    return send_from_directory(folder, "index.html")
 
 @app.route("/api/status")
 def status():
@@ -1232,7 +1193,7 @@ def set_key():
     if not key.startswith("AIza"):
         return jsonify({"ok": False, "error": "Cle invalide - doit commencer par AIza"})
     genai.configure(api_key=key)
-    gemini_client = genai.GenerativeModel("gemini-2.0-flash") if genai else None
+    gemini_client = genai.GenerativeModel("gemini-2.0-flash")
     print(f"  Cle Gemini enregistree : {key[:16]}...")
     return jsonify({"ok": True})
 
@@ -1588,11 +1549,7 @@ Réponds UNIQUEMENT en JSON sans backticks :
 
 def get_db():
     import sqlite3, os
-    # Sur Vercel, seul /tmp est writable
-    if os.environ.get("VERCEL"):
-        db_path = "/tmp/morgaia.db"
-    else:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "morgaia.db")
+    db_path = os.path.join(os.path.dirname(__file__), "scoutai.db")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
@@ -2017,10 +1974,16 @@ def history_delete(hid):
 # DEMARRAGE
 # ─────────────────────────────────────────────
 
-# init_db() appelé à la première requête
-
-# Point d'entrée Vercel (handler)
-# Vercel détecte automatiquement l'objet 'app' Flask
 if __name__ == "__main__":
     init_db()
+    print(f"""
++==========================================+
+|    MorgaIA v2  -  Serveur Flask          |
++==========================================+
+  Saison  : {SEASON}
+  URL     : http://localhost:{PORT}
+  Gemini  : Entrer la cle dans le site
+  Odds    : The Odds API activee
+  Arret   : Ctrl+C
+""")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8765)), debug=False)
